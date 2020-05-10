@@ -1,5 +1,3 @@
-
-
 import java.awt.image.*;
 import java.util.HashSet;
 import java.util.Set;
@@ -17,8 +15,7 @@ public class Label8 {
     }
 
     static int CCLSub(int[][] fb, int pass, int x0, int y0, int iw, int ih) {
-
-    	int g = fb[pass-1][y0 * iw + x0];
+	int g = fb[pass-1][y0 * iw + x0];
 
 	for(int y=-1;y<=1;y++) {
 	    if (y + y0 < 0 || y + y0 >= ih) continue;
@@ -69,7 +66,7 @@ public class Label8 {
 	
         for(int y = 0;y < ih;y++) {
             for(int x = 0;x < iw;x++) {
-		fb[0][y * iw + x] = ((inImage.getRGB(x, y) >> 8) & 255) > 127 ? 1 : 0;
+		fb[0][y * iw + x] = ((inImage.getRGB(x, y) >> 8) & 255) > 127 ? 0 : 1;
             }
         }
 	
@@ -84,7 +81,6 @@ public class Label8 {
         
         return outImage;
     }
-   
     
     static public int getNumberOfCC(BufferedImage image) {
     	Set<Integer> colors = new HashSet<Integer>();
@@ -97,7 +93,6 @@ public class Label8 {
                 colors.add(pixel);
             }
         }
-        System.out.println("There are "+colors.size()+" colors");
         
         return colors.size();
     }
