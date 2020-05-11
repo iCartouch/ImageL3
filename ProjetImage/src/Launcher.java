@@ -12,24 +12,13 @@ import javax.imageio.ImageIO;
 	import javax.swing.JFrame;
 	import javax.swing.JLabel;
 
-import javafx.application.Application;
-import javafx.scene.Scene;
-import javafx.scene.image.Image;
-import javafx.scene.layout.Pane;
-import javafx.stage.FileChooser;
-import javafx.stage.Stage;
-
-
 
 	public class Launcher {
 
 
-		// AFFICHAGE
+		// Afficher une image passé en paramétre
 		public static void imshow(BufferedImage image) throws IOException {
-		      //Instantiate JFrame
 		      JFrame frame = new JFrame();
-
-		      //Set Content to the JFrame
 		      frame.getContentPane().add(new JLabel(new ImageIcon(image)));
 		      frame.pack();
 		      frame.setVisible(true);
@@ -37,7 +26,7 @@ import javafx.stage.Stage;
 
 
 
-		// CREATION IMAGE NOIRE
+		// Création d'une image noire, avec les paramétres width & height
 		static BufferedImage zeros(int width, int height) {
 			int[] noir = {0,0,0,255};
 	        BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
@@ -50,63 +39,11 @@ import javafx.stage.Stage;
 	    }
 
 
-		// EGALISATION    NE FONCTIONNE PAS
-		public static BufferedImage normalize_minmax(BufferedImage image) {
-			int rows = image.getHeight();
-			int cols = image.getWidth();
-
-			System.out.println("Size is, w=" + cols + "; h="+rows);
-			// search the max and the min values in the image for each chanel
-
-			float min = 255;
-			float max = 0;
-
-			for (int i = 0; i < rows; i++) {
-				for (int j = 0; j < cols; j++) {
-
-					//float pixel = ((image.getRGB(j, i) >> 16) & 0xff);
-					//System.out.println("x="+i+";y="+j+"; pix="+pixel);
-
-					float[] out = new float[3];
-					image.getRaster().getPixel(j, i, out);
-
-					if (out[0] < min) {
-						min = out[0];
-					}
-					if (out[0] > max) {
-						max = out[0];
-					}
-				}
-			}
-
-			System.out.println("min =" + min + "; max="+max);
-			BufferedImage img = new BufferedImage(cols, rows, 10);
-
-			for (int i = 0; i < rows; i++) {
-				for (int j = 0; j < cols; j++) {
-					int pixel = 0;//((image.getRGB(j, i) >> 16) & 0xff);
-
-					float[] out = new float[3];
-					image.getRaster().getPixel(j, i, out);
-
-					pixel = (int) ( 255 * (out[0] - min) / (max - min));
-					int[] new_color = {pixel, pixel, pixel};
-					img.getRaster().setPixel(j, i, new_color);
-				}
-			}
-
-			return img;
-
-		}
-
-
-
-		// Image en Gris
+		// Convertis une image en image grise
 		public static BufferedImage toGray(BufferedImage img) {
 			for (int y=0;y<img.getHeight();y++) {
 				for(int x=0;x<img.getWidth();x++) {
-					int p = img.getRGB(x,y); // r�cup�ration des couleurs RGB du pixel a la position (x, y)
-					int a = (p>>24)&0xff;
+					int p = img.getRGB(x,y);
 			        int r = (p>>16)&0xff;
 			        int g = (p>>8)&0xff;
 			        int b = p&0xff;
@@ -119,8 +56,41 @@ import javafx.stage.Stage;
 		}
 
 
+		// Calcul le niveau de seuil d'une image , Seuillage OTSU
+				public static int otsuTreshold(BufferedImage imgo) {
+					int[] tab = imageHistogram(imgo);
+			        int total = imgo.getHeight() * imgo.getWidth();
+			        float sum = 0;
+			        for(int i=0; i<tab.length; i++) sum += i * tab[i];
 
-		// SEUILLAGE
+			        float sumB = 0;
+			        int wB = 0;
+			        int wF = 0;
+
+			        float varMax = 0;
+			        int threshold = 0;
+
+			        for(int i=0 ; i<tab.length ; i++) {
+			            wB += tab[i];
+			            wF = total - wB;
+			            if(wF == 0) break;
+
+			            sumB += (float) (i * tab[i]);
+			            float mB = sumB / wB;
+			            float mF = (sum - sumB) / wF;
+
+			            float varBetween = (float) wB * (float) wF * (mB - mF) * (mB - mF);
+
+			            if(varBetween > varMax) {
+			                varMax = varBetween;
+			                threshold = i;
+			            }
+			        }
+			        return threshold;
+			    }
+
+				
+		// Retourne une image seuillé à l'aide d'un niveau de seuil passé en paramétre
 		public static BufferedImage threshold(BufferedImage img, int s) {
 			int rows = img.getHeight();
 			int cols = img.getWidth();
@@ -144,7 +114,7 @@ import javafx.stage.Stage;
 
 
 
-		// CONVOLUTION 2.0
+		// Applique une convolution sur l'image, à l'aide d'un masque passé en paramètre
 		public static BufferedImage convolveOP(BufferedImage img, int x, int y, float[] mask) {
 
 				/* Définition du noyau */
@@ -157,56 +127,15 @@ import javafx.stage.Stage;
 				return convolution.filter(img, null);
 		}
 
-		public static BufferedImage detectionRect(BufferedImage img) {
-			System.out.println("YOOO");
-			int[] noir = {0,0,0,255};
-			int[] blanc = {255,255,255,255};
-			
-			int [][] rect=new int [20][5];
-			for(int x=0;x<20;x++) {
-				for (int y=0;y<5;y++){
-					rect[x][y]=1;
-				}
-			}
-			
-			int tab[][]= new int[20][5];
-			for(int l=0;l<img.getHeight();l++) {
-				for (int c=0;c<img.getWidth();c++){
-					int p = img.getRGB(c,l); // r�cup�ration des couleurs RGB du pixel a la position (x, y)
-					
-						if (p==1) {
-							boolean bool = true;
-							for(int i=0;i<20;i++) {
-								for (int j=0;j<5;j++){
-									if (img.getRGB(c+j,l+i)!=rect[i][j]) {
-									bool = false;
-									}	
-								}
-							}
-							if (bool){
-								img.getRaster().setPixel(c, l, blanc);
-							}else {
-								img.getRaster().setPixel(c, l, noir);
-							}
-						}
-						
-				}
-			}
-			
-			return img;
-		}
 
 
-		// TAB DE IMG
+		// Convertis une image en un tableau
 		public static int[] imageHistogram(BufferedImage img) {
 				int tab[]= new int[img.getWidth()];
 				for(int l=0;l<img.getHeight();l++) {
 					for (int c=0;c<img.getWidth();c++){
-						int p = img.getRGB(c,l); // r�cup�ration des couleurs RGB du pixel a la position (x, y)
-						int a = (p>>24)&0xff;
+						int p = img.getRGB(c,l);
 				        int r = (p>>16)&0xff;
-				        int g = (p>>8)&0xff;
-				        int b = p&0xff;
 							tab[r]++;							// Incrémentation de l'histogramme
 					}
 				}
@@ -215,49 +144,16 @@ import javafx.stage.Stage;
 
 
 
-		// Seuillage OTSU
-		public static int otsuTreshold(BufferedImage imgo) {
-			int[] tab = imageHistogram(imgo);
-	        int total = imgo.getHeight() * imgo.getWidth();
-	        float sum = 0;
-	        for(int i=0; i<tab.length; i++) sum += i * tab[i];
 
-	        float sumB = 0;
-	        int wB = 0;
-	        int wF = 0;
-
-	        float varMax = 0;
-	        int threshold = 0;
-
-	        for(int i=0 ; i<tab.length ; i++) {
-	            wB += tab[i];
-	            wF = total - wB;
-	            if(wF == 0) break;
-
-	            sumB += (float) (i * tab[i]);
-	            float mB = sumB / wB;
-	            float mF = (sum - sumB) / wF;
-
-	            float varBetween = (float) wB * (float) wF * (mB - mF) * (mB - mF);
-
-	            if(varBetween > varMax) {
-	                varMax = varBetween;
-	                threshold = i;
-	            }
-	        }
-	        return threshold;
-	    }
-
-
-		// TAB sur 100
+		// Retourne un tableau en pourcentage
 		public static int[] pourcentage(int[] tab) {
-			// MAX
+			// Retrouve le max du tableau
 			int max = tab[0];
 			for (int i=1;i<tab.length;i++) {
 				if(max<tab[i]) max=tab[i];
 			}
 
-			// Pourcentage sur 100
+			// Conversion sur 100
 			for (int i=0;i<tab.length;i++) {
 				tab[i]=(tab[i]*100)/max;
 			}
@@ -265,9 +161,10 @@ import javafx.stage.Stage;
 		}
 
 
-		// Ecriture Histo
+		
+		// Retourne une image d'histogramme à l'aide du tableau
 		public static BufferedImage ecritHisto(int[] tab) {
-			// Nouvel Image
+			// Nouvelle Image
 			BufferedImage img2 = zeros(tab.length,100);
 
 			// Implementation Histogramme
@@ -280,7 +177,8 @@ import javafx.stage.Stage;
 		}
 
 
-		// Histogramme NiveauGris
+		
+		// Retourne une image de l'histogramme de Niveau de Gris
 		public static BufferedImage histoG(BufferedImage img) {
 
 			int[] tab = imageHistogram(img);
@@ -291,7 +189,9 @@ import javafx.stage.Stage;
 		}
 
 
-		// Trouver 2 coupures
+		
+		// Trouver les deux coupures pour recadrer l'image
+		// Une coupure est, par rapport à l'histogramme de projection, un creux d'information
 		public static int[] coupure(int[] tab) {
 			System.out.println("Coupure");
 			int[] res = new int[2];
@@ -311,7 +211,10 @@ import javafx.stage.Stage;
 			return res;
 		}
 
-		// Trouver 2 coupures
+		
+		
+		// Trouver les deux coupures pour recadrer l'image
+		// Utilisé si coupure est faux
 		public static int[] coupure2(int[] tab) {
 					System.out.println("Coupure 2");
 					int[] res = new int[2];
@@ -320,11 +223,9 @@ import javafx.stage.Stage;
 					for (int i=0;i<tab.length;i++) {
 						if (tab[i]>75) {
 							x = i-1;
-							//System.out.println(i+" "+x);
 						}
 						if (tab[i]==100) {
 							res[0]=i-x;
-							//System.out.println(i);
 							m = i ;
 							i=tab.length;
 						}
@@ -342,14 +243,14 @@ import javafx.stage.Stage;
 					return res;
 				}
 
+		
 
-		// Histogramme Projection Noir  HistoR
+		// Retourne une image de l'histogramme de Projection, de couleur noire
 		public static BufferedImage histoR(BufferedImage img) {
 					int[] tab = new int[img.getWidth()];
 					for(int x=0;x<img.getWidth();x++) {
 						for (int y=0;y<img.getHeight();y++){
-							int p = img.getRGB(x,y); // r�cup�ration des couleurs RGB du pixel a la position (x, y)
-					        int r = (p>>16)&0xff;
+							int p = img.getRGB(x,y); 
 					        if(-p==16777216) {
 					        	tab[x]++;
 					        }
@@ -357,34 +258,22 @@ import javafx.stage.Stage;
 					}
 
 					tab = pourcentage(tab);
-					/*
-					for (int i=0;i<tab.length;i++) {
-						System.out.println(tab[i]);
-					}
-					*/
 					int [] res = coupure(tab);
 					System.out.println(res[0]+" " + res[1]+" " + res.length);
 					if (res[0]==0 && res[1]==0) { res = coupure2(tab); System.out.println(res[0]+" " + res[1]+" " + res.length);}
 					System.out.println(res[0]+" " + res[1]+" " + res.length);
-					/*
-					// Tab taille de creux
-					int tabfinal[] = new int[res[1]-res[0]];
-					for(int i =0;i<tabfinal.length;i++) {
-						tabfinal[i]=tab[i+100];
-
-					}
-					*/
+					
 					return ecritHisto(tab);
 				}
 
 
-		// Nouvel Image en fonction de histoR
+		
+		// Retourne une nouvelle image en fonction de l'histogramme de Projection
 		public static BufferedImage resizeImage(BufferedImage img) {
 			int[] tab = new int[img.getWidth()];
 			for(int x=0;x<img.getWidth();x++) {
 				for (int y=0;y<img.getHeight();y++){
-					int p = img.getRGB(x,y); // r�cup�ration des couleurs RGB du pixel a la position (x, y)
-			        int r = (p>>16)&0xff;
+					int p = img.getRGB(x,y);
 			        if(-p==16777216) {
 			        	tab[x]++;
 			        }
@@ -398,8 +287,7 @@ import javafx.stage.Stage;
 			BufferedImage img3 = zeros(res[1]-res[0],img.getHeight());
 				for(int x=0;x<img3.getWidth();x++) {
 						for (int y=0;y<img3.getHeight();y++){
-							int p = img.getRGB(x+res[0],y); // r�cup�ration des couleurs RGB du pixel a la position (x, y)
-							int a = (p>>24)&0xff;
+							int p = img.getRGB(x+res[0],y); 
 					        int r = (p>>16)&0xff;
 					        int g = (p>>8)&0xff;
 					        int b = p&0xff;
@@ -410,13 +298,15 @@ import javafx.stage.Stage;
 			return img3;
 		}
 
+		
 
+		// Retourne une nouvelle image couper au centre de l'image
+		// Couper en trois morceaux, on retourne le morceaux du centre
 		public static BufferedImage coupureCentre(BufferedImage img) {
 			BufferedImage new_img = zeros((int)(img.getWidth()/3)+1,img.getHeight());
 			for(int x=(int)(img.getWidth()/3);x<(int)((img.getWidth()*2)/3)-1;x++) {
 				for (int y=0;y<img.getHeight();y++){
-					int p = img.getRGB(x,y); // r�cup�ration des couleurs RGB du pixel a la position (x, y)
-
+					int p = img.getRGB(x,y);
 			        int r = (p>>16)&0xff;
 			        int g = (p>>8)&0xff;
 			        int b = p&0xff;
@@ -428,12 +318,15 @@ import javafx.stage.Stage;
 			return new_img;
 		}
 
+		
+		
+		// Retourne une nouvelle image couper à Droite de l'image
+		// Couper en trois morceaux, on retourne le morceaux de droite
 		public static BufferedImage coupureDroite(BufferedImage img) {
 			BufferedImage new_img = zeros((int)(img.getWidth()/3)+1,img.getHeight());
 			for(int x=(int)(img.getWidth()*2/3);x<(int)(img.getWidth())-1;x++) {
 				for (int y=0;y<img.getHeight();y++){
-					int p = img.getRGB(x,y); // r�cup�ration des couleurs RGB du pixel a la position (x, y)
-
+					int p = img.getRGB(x,y);
 			        int r = (p>>16)&0xff;
 			        int g = (p>>8)&0xff;
 			        int b = p&0xff;
@@ -441,16 +334,18 @@ import javafx.stage.Stage;
 			        new_img.getRaster().setPixel(x-(int)(img.getWidth()*2/3), y, pixel);
 			        }
 				}
-
 			return new_img;
 		}
 		
+		
+		
+		// Retourne une nouvelle image couper à Gauche de l'image
+		// Couper en trois morceaux, on retourne le morceaux de gauche
 		public static BufferedImage coupureGauche(BufferedImage img) {
 			BufferedImage new_img = zeros((int)(img.getWidth()/3)+1,img.getHeight());
 			for(int x=0;x<(int)(img.getWidth())/3-1;x++) {
 				for (int y=0;y<img.getHeight();y++){
-					int p = img.getRGB(x,y); // r�cup�ration des couleurs RGB du pixel a la position (x, y)
-
+					int p = img.getRGB(x,y);
 			        int r = (p>>16)&0xff;
 			        int g = (p>>8)&0xff;
 			        int b = p&0xff;
@@ -458,10 +353,12 @@ import javafx.stage.Stage;
 			        new_img.getRaster().setPixel(x, y, pixel);
 			        }
 				}
-
 			return new_img;
 		}
 		
+		
+		
+		// Affiche le menu interactif pour l'utilisateur
 		public static void menu() {
 			System.out.println("***** Détection d'escalier *****\n");
 			System.out.println("\t1. Recadrage automatique");
@@ -480,7 +377,11 @@ import javafx.stage.Stage;
 			
 		}
 
+		
 
+		// Fonction éxecuté
+		// Un menu intéractif pour l'utilisateur
+		// L'utilisateur peut alors executer les différentes méthodes de traitement d'image
 		public static void main(String[] args) throws IOException {
 			
 			File path = new File("/Users/maxiiiiiiiiime/Documents/Image/ImageEsc/esc12.jpg");
@@ -494,12 +395,12 @@ import javafx.stage.Stage;
 				e1.printStackTrace();
 			}
 
-			BufferedImage gray = toGray(img);
+			BufferedImage gray = toGray(img);			// Image grisé
 
 			BufferedImage img2 = null;
 			img2 = threshold(gray, otsuTreshold(gray));		// SEUILLAGE
 
-			imshow(img2);
+			imshow(img2);								// AFFICHAGE
 				
 			BufferedImage test = img2;
 			int choix=99;
