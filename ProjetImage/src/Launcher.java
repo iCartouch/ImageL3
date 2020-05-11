@@ -384,7 +384,11 @@ import javax.imageio.ImageIO;
 		// L'utilisateur peut alors executer les différentes méthodes de traitement d'image
 		public static void main(String[] args) throws IOException {
 			
-			File path = new File("/Users/maxiiiiiiiiime/Documents/Image/ImageEsc/esc12.jpg");
+			Scanner sc = new Scanner(System.in);
+			System.out.println("------ Veuillez indiquer le chemin de votre image ------");
+			String chemin = sc.nextLine();
+			File path = new File(chemin);
+			
 			
 			BufferedImage img = null;
 
@@ -406,8 +410,6 @@ import javax.imageio.ImageIO;
 			int choix=99;
 			do {		
 				menu();
-				
-				Scanner sc = new Scanner(System.in);
 				
 					try {
 						choix = sc.nextInt();
